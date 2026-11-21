@@ -88,6 +88,4 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 🚀 Build, migration, démarrage, vérifications (retour arrière automatique si échec)
-        run: bash deploy/deploy.sh
-        env:
-          GITHUB_SHA: ${{ github.sha }}
+        run: bash deploy/deploy.sh   # GITHUB_SHA est déjà fourni par le runner
