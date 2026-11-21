@@ -1,0 +1,19 @@
+# TLS automatique (Let's Encrypt). Les DNS de WEB_DOMAIN et API_DOMAIN doivent pointer vers ce serveur.
+{$WEB_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy web:3000
+}
+
+{$API_DOMAIN} {
+	encode zstd gzip
+	# Corps limité : l'API valide déjà 256 Ko, on coupe plus tôt
+	request_body {
+		max_size 512KB
+	}
+	reverse_proxy api:4000 {
+		# Le long-polling du bridge FiveM dure jusqu'à ~25 s
+		transport http {
+			response_header_timeout 40s
+		}
+	}
+}

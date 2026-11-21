@@ -1,0 +1,93 @@
+name: 🚀 CI / Deploy Syntra
+
+# Pull request : vérifications uniquement. Push sur main : vérifications puis déploiement sur le serveur.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Jamais deux déploiements en parallèle ; une PR plus récente annule la précédente
+concurrency:
+  group: syntra-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  # Valeurs factices : uniquement pour que les tests et le build aient de quoi démarrer (aucun secret ici)
+  DATABASE_URL: postgresql://syntra:syntra@localhost:5432/syntra
+  REDIS_URL: redis://localhost:6379
+  AUTH_SECRET: ci-only-secret
+  AUTH_URL: http://localhost:3000
+  MASTER_KEYS: k1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+  MASTER_KEY_CURRENT: k1
+
+jobs:
+  verify:
+    name: 🔍 Typecheck, tests, build
+    runs-on: ubuntu-latest   # hébergé par GitHub : bases de test jetables, rien n'est exécuté sur votre serveur
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_USER: syntra, POSTGRES_PASSWORD: syntra, POSTGRES_DB: syntra }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U syntra" --health-interval 5s --health-timeout 5s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+      fivem-db:            # fausse base FiveM pour les tests de la fiche joueur
+        image: mariadb:11
+        env: { MARIADB_ROOT_PASSWORD: root, MARIADB_DATABASE: fivem }
+        ports: ['3307:3306']
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized" --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 📦 pnpm
+        uses: pnpm/action-setup@v4      # version lue dans "packageManager" du package.json
+
+      - name: 📦 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: 📚 Dépendances
+        run: pnpm install --frozen-lockfile
+
+      - name: 🗄️ Base de données (migrations + client Prisma)
+        run: |
+          pnpm --filter @syntra/db migrate:deploy
+          pnpm --filter @syntra/db generate
+
+      - name: 🔍 TypeScript
+        run: pnpm -r typecheck
+
+      - name: 🧪 Tests
+        run: pnpm -r test
+
+      - name: 🏗️ Build du dashboard
+        run: pnpm --filter @syntra/web build
+
+  deploy:
+    name: 🚀 Déploiement
+    needs: verify
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    # Runner installé sur le LXC de Syntra (label « syntra »), comme LSPD-Tool
+    runs-on: [self-hosted, syntra]
+    timeout-minutes: 30
+    environment: production
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🚀 Build, migration, démarrage, vérifications (retour arrière automatique si échec)
+        run: bash deploy/deploy.sh
+        env:
+          GITHUB_SHA: ${{ github.sha }}

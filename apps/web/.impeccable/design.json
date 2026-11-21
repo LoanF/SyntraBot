@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-21T00:00:00.000Z",
+  "title": "Design System: Syntra Dashboard",
+  "extensions": {
+    "colorMeta": {
+      "primary": { "role": "primary", "displayName": "Facet Violet", "canonical": "#ad83ff", "tonalRamp": ["#2a1a52", "#3d2578", "#5a3aa8", "#7a52d6", "#9057ff", "#ad83ff", "#cbb0ff", "#e6dbff"] },
+      "primary-deep": { "role": "primary", "displayName": "Deep Violet", "canonical": "#9057ff", "tonalRamp": ["#1e1238", "#331f63", "#4b2f94", "#6a42c8", "#9057ff", "#ad83ff", "#cbb0ff", "#e6dbff"] },
+      "bg": { "role": "neutral", "displayName": "Void", "canonical": "#0b0a10", "tonalRamp": ["#0b0a10", "#12111a", "#181723", "#201f2d", "#2a2938", "#3a3950", "#8b89a3", "#f2f1f8"] },
+      "surface-1": { "role": "neutral", "displayName": "Panel Ink", "canonical": "#12111a", "tonalRamp": ["#0b0a10", "#12111a", "#181723", "#1c1b28", "#201f2d", "#2a2938", "#3a3950", "#a3a1b8"] },
+      "text": { "role": "neutral", "displayName": "Bright Text", "canonical": "#f2f1f8", "tonalRamp": ["#3a3950", "#6b6985", "#8b89a3", "#a3a1b8", "#c4c2d4", "#dcdbe6", "#eceaf4", "#f2f1f8"] },
+      "success": { "role": "status", "displayName": "Signal Green", "canonical": "#3ecf8e", "tonalRamp": ["#0f2f22", "#145139", "#1b7a56", "#25a374", "#3ecf8e", "#6ddcaa", "#a0e9c8", "#d2f5e5"] },
+      "warning": { "role": "status", "displayName": "Amber", "canonical": "#f5b544", "tonalRamp": ["#3a2a0a", "#5e430f", "#8f6619", "#c28a26", "#f5b544", "#f8c875", "#fbdca5", "#fdeed2"] },
+      "danger": { "role": "status", "displayName": "Alert Red", "canonical": "#f2555a", "tonalRamp": ["#3a1214", "#5e1c1f", "#912a2e", "#c43c41", "#f2555a", "#f58085", "#f9abae", "#fcd5d6"] },
+      "info": { "role": "status", "displayName": "Info Blue", "canonical": "#5aa9ff", "tonalRamp": ["#0f2440", "#173a66", "#235a9e", "#3a7fd6", "#5aa9ff", "#86c0ff", "#b3d8ff", "#dbebff"] }
+    },
+    "typographyMeta": {
+      "title": { "displayName": "Title", "purpose": "One page title per page, 20px semibold, tight tracking." },
+      "headline": { "displayName": "Headline", "purpose": "Empty-state and dialog titles, wordmark, 15px semibold." },
+      "body": { "displayName": "Body", "purpose": "Working text, controls and nav at 13px." },
+      "base": { "displayName": "Base", "purpose": "Document default and transcript message text at 14px." },
+      "label": { "displayName": "Label", "purpose": "Badges, hints and group labels at 12px medium." },
+      "mono": { "displayName": "Mono", "purpose": "Slugs, ids, timestamps, guild kinds in Geist Mono." }
+    },
+    "shadows": [
+      { "name": "dialog", "value": "0 24px 60px -12px rgb(0 0 0 / 0.6)", "purpose": "Dialogs and side sheets over a 60% black scrim." },
+      { "name": "menu", "value": "0 16px 40px -8px rgb(0 0 0 / 0.6)", "purpose": "Dropdown menus." },
+      { "name": "switch-thumb", "value": "0 1px 2px rgb(0 0 0 / 0.4)", "purpose": "Switch thumb only." },
+      { "name": "focus-glow", "value": "0 0 0 3px color-mix(in srgb, #9057ff 35%, transparent)", "purpose": "Token for focus glow; inputs use a 2px brand/30 ring." }
+    ],
+    "motion": [
+      { "name": "ease-out-expo", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Shared easing for fade-up, sheet-in and pop-in." },
+      { "name": "fade-up", "value": "180ms, translateY(4px) to none", "purpose": "Content entering." },
+      { "name": "pop-in", "value": "160ms, scale(0.98) translateY(4px) to none", "purpose": "Dialogs and menus." },
+      { "name": "sheet-in", "value": "200ms, translateX(-12px) to none", "purpose": "Left navigation drawer." },
+      { "name": "shimmer", "value": "1.4s linear infinite", "purpose": "Skeleton loading." },
+      { "name": "control-transition", "value": "150ms color, border, background, transform", "purpose": "Button and switch state changes." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one primary action per view: light violet fill, ink text.",
+      "html": "<button class=\"ds-btn-primary\">Enregistrer</button>",
+      "css": ".ds-btn-primary{display:inline-flex;align-items:center;justify-content:center;height:32px;padding:0 12px;border:0;border-radius:10px;background:#ad83ff;color:#0b0a10;font:500 13px/1 system-ui,sans-serif;cursor:pointer;transition:background-color 150ms,transform 150ms}.ds-btn-primary:hover{background:#bd9bff}.ds-btn-primary:active{transform:translateY(1px)}.ds-btn-primary:focus-visible{outline:2px solid #ad83ff;outline-offset:2px}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Default button: raised ink fill with a strong hairline.",
+      "html": "<button class=\"ds-btn-secondary\">Annuler</button>",
+      "css": ".ds-btn-secondary{display:inline-flex;align-items:center;justify-content:center;height:32px;padding:0 12px;border:1px solid #3a3950;border-radius:10px;background:#181723;color:#f2f1f8;font:500 13px/1 system-ui,sans-serif;cursor:pointer;transition:background-color 150ms,border-color 150ms}.ds-btn-secondary:hover{background:#201f2d;border-color:#4a4962}.ds-btn-secondary:focus-visible{outline:2px solid #ad83ff;outline-offset:2px}"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive confirm inside ConfirmDialog.",
+      "html": "<button class=\"ds-btn-danger\">Supprimer</button>",
+      "css": ".ds-btn-danger{display:inline-flex;align-items:center;justify-content:center;height:32px;padding:0 12px;border:1px solid rgba(242,85,90,.4);border-radius:10px;background:rgba(242,85,90,.1);color:#f2555a;font:500 13px/1 system-ui,sans-serif;cursor:pointer;transition:background-color 150ms}.ds-btn-danger:hover{background:rgba(242,85,90,.2)}.ds-btn-danger:focus-visible{outline:2px solid #ad83ff;outline-offset:2px}"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "32px field on panel ink with strong hairline and violet focus.",
+      "html": "<input class=\"ds-input\" placeholder=\"Filtrer par action\" />",
+      "css": ".ds-input{width:240px;height:32px;padding:0 12px;border:1px solid #3a3950;border-radius:10px;background:#12111a;color:#f2f1f8;font:13px system-ui,sans-serif;caret-color:#ad83ff;transition:border-color 150ms}.ds-input::placeholder{color:#8b89a3}.ds-input:hover{border-color:#4a4962}.ds-input:focus-visible{outline:none;border-color:#ad83ff;box-shadow:0 0 0 2px rgba(173,131,255,.3)}"
+    },
+    {
+      "name": "Sidebar Nav Item",
+      "kind": "nav",
+      "refersTo": "nav-item-active",
+      "description": "Active item with violet wash, brand icon and the slanted facet stripe.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-item ds-active\"><span class=\"ds-facet\"></span><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><rect x=\"3\" y=\"3\" width=\"7\" height=\"9\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"5\"/><rect x=\"14\" y=\"12\" width=\"7\" height=\"9\"/><rect x=\"3\" y=\"16\" width=\"7\" height=\"5\"/></svg>Vue d'ensemble</a><a class=\"ds-nav-item\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M4 7h16M4 12h16M4 17h16\"/></svg>Modules</a></nav>",
+      "css": ".ds-nav{display:grid;gap:2px;padding:0 12px;width:216px}.ds-nav-item{position:relative;display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:10px;color:#a3a1b8;font:13px system-ui,sans-serif;text-decoration:none;transition:background-color 150ms,color 150ms}.ds-nav-item svg{color:#8b89a3}.ds-nav-item:hover{background:#1c1b28;color:#f2f1f8}.ds-active{background:rgba(144,87,255,.16);color:#f2f1f8}.ds-active svg{color:#ad83ff}.ds-facet{position:absolute;left:-12px;top:50%;width:3px;height:20px;transform:translateY(-50%);background:#ad83ff;clip-path:polygon(0 0,100% 12%,100% 88%,0 100%)}"
+    },
+    {
+      "name": "Badge",
+      "kind": "chip",
+      "refersTo": "badge-neutral",
+      "description": "Pill status labels; neutral, brand and tinted status tones.",
+      "html": "<span class=\"ds-badge\">Brouillon</span> <span class=\"ds-badge ds-brand\">Staff</span> <span class=\"ds-badge ds-ok\">Actif</span>",
+      "css": ".ds-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:9999px;background:#201f2d;color:#a3a1b8;font:500 12px/20px system-ui,sans-serif}.ds-brand{background:rgba(144,87,255,.16);color:#ad83ff}.ds-ok{background:rgba(62,207,142,.12);color:#3ecf8e}"
+    },
+    {
+      "name": "Panel with Header",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Single-level flat panel: hairline border, header divider, no shadow, never nested.",
+      "html": "<section class=\"ds-panel\"><header class=\"ds-panel-head\"><h2>Pôles</h2><p>Équipes qui reçoivent les tickets.</p></header><div class=\"ds-panel-body\">Contenu</div></section>",
+      "css": ".ds-panel{width:340px;border:1px solid #2a2938;border-radius:14px;background:#12111a;color:#f2f1f8;font-family:system-ui,sans-serif}.ds-panel-head{padding:12px 16px;border-bottom:1px solid #2a2938}.ds-panel-head h2{margin:0;font-size:13px;font-weight:600}.ds-panel-head p{margin:2px 0 0;font-size:12px;color:#8b89a3}.ds-panel-body{padding:16px;font-size:13px;color:#a3a1b8}"
+    },
+    {
+      "name": "Empty State",
+      "kind": "custom",
+      "refersTo": "panel",
+      "description": "Icon tile, title, explanation and next action. No illustration.",
+      "html": "<div class=\"ds-empty\"><span class=\"ds-tile\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M22 12h-6l-2 3h-4l-2-3H2\"/><path d=\"M5.5 5h13l3.5 7v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z\"/></svg></span><h3>Aucun ticket</h3><p>Les tickets ouverts par vos joueurs apparaîtront ici.</p></div>",
+      "css": ".ds-empty{display:flex;flex-direction:column;align-items:center;padding:56px 24px;text-align:center;font-family:system-ui,sans-serif;color:#f2f1f8}.ds-tile{display:grid;place-items:center;width:44px;height:44px;margin-bottom:16px;border:1px solid #3a3950;border-radius:14px;background:#181723;color:#a3a1b8}.ds-empty h3{margin:0;font-size:15px;font-weight:600}.ds-empty p{margin:6px 0 0;max-width:46ch;font-size:13px;line-height:1.6;color:#a3a1b8}"
+    },
+    {
+      "name": "Transcript Internal Note",
+      "kind": "custom",
+      "refersTo": "panel",
+      "description": "Internal note in the four-way author distinction: dashed amber frame, lock avatar, explicit chip.",
+      "html": "<article class=\"ds-note\"><span class=\"ds-lock\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><rect x=\"4\" y=\"11\" width=\"16\" height=\"10\" rx=\"2\"/><path d=\"M8 11V7a4 4 0 0 1 8 0v4\"/></svg></span><div><header><b>Alex</b> <span class=\"ds-chip\">Note interne · invisible du joueur</span> <time>14:02</time></header><p>Vérifier l'historique avant de répondre.</p></div></article>",
+      "css": ".ds-note{display:flex;gap:12px;margin:4px 12px;padding:10px 12px;border:1px dashed rgba(245,181,68,.4);border-radius:10px;background:rgba(245,181,68,.06);font-family:system-ui,sans-serif;color:#dcdbe6}.ds-lock{display:grid;place-items:center;flex:none;width:36px;height:36px;border-radius:9999px;background:rgba(245,181,68,.15);color:#f5b544}.ds-note b{font-size:14px;font-weight:600;color:#f5b544}.ds-chip{padding:1px 6px;border-radius:4px;background:rgba(245,181,68,.15);color:#f5b544;font-size:11px;font-weight:500}.ds-note time{font:11px ui-monospace,monospace;color:#8b89a3}.ds-note p{margin:2px 0 0;font-size:14px;line-height:1.45}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Night Console",
+    "overview": "A dark-only control room for people who moderate and configure Discord communities. Every surface is a near-black grey with a faint violet cast, so the single brand hue has somewhere to be quiet and somewhere to be loud. The system is dense but not cramped: 13px working text, 32px controls, 1px separators doing the work that shadows and cards do elsewhere.\n\nViolet is a state, not a decoration. It marks what is active (current nav item, selected tab, switch on), what has focus (outline, input border), and the one primary action per view. Everything else is neutral ink, muted text and the four status hues. The only ornament in the product is the facet: a 3px slanted stripe lifted from the logo that flags the current page in the sidebar.\n\nPanels are single-level. A panel sits on the page background and holds content directly; nothing nests a card inside a card. Motion exists only to confirm a state change and is switched off for reduced-motion users.",
+    "keyCharacteristics": [
+      "Dark only (color-scheme: dark); no light theme exists.",
+      "Ink-violet neutral ladder: bg, surface-1, surface-2, surface-3, each one step lighter.",
+      "Violet (#ad83ff light, #9057ff deep) reserved for active, focus and primary.",
+      "Geist for interface, Geist Mono for ids, slugs, times and counts; tabular numerals globally.",
+      "6 / 10 / 14px radii, 1px separators, soft shadow only on floating layers.",
+      "Skeleton loading (shimmer), plus error and not-found boundaries."
+    ],
+    "rules": [
+      { "name": "The Violet Is A State Rule", "body": "Violet appears only where something is active, focused or the primary action. A decorative violet surface, gradient or border is out of system.", "section": "colors" },
+      { "name": "The Ink On Violet Rule", "body": "Any element filled with #ad83ff takes ink (#0b0a10) text. This applies to the primary button and to avatar initials.", "section": "colors" },
+      { "name": "The Own Palette Rule", "body": "The Discord preview deliberately uses Discord's own palette because fidelity is the point. That block is the only place off-palette colors are allowed, and it must stay inside the preview component.", "section": "colors" },
+      { "name": "The Quiet Ramp Rule", "body": "The ramp tops out at 20px. New screens do not introduce larger display type; they get emphasis from weight (600) and the fg/muted/subtle color steps.", "section": "typography" },
+      { "name": "The Tabular Rule", "body": "Tabular numerals are on for the whole body so data columns align; do not turn them off per component.", "section": "typography" },
+      { "name": "The Flat Panel Rule", "body": "Panels never carry a shadow and never nest. A second grouping inside a panel is a hairline divider or a surface-2 tile, not another bordered card.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep violet for active, focus and the single primary action, and put ink (#0b0a10) text on any #ad83ff fill.",
+      "Do build depth from the surface ladder and 1px hairlines; use Panel as a single flat level.",
+      "Do use the 6 / 10 / 14px radii: 10px on controls, 14px on containers, pill on badges and dots.",
+      "Do pair every status color with a label or icon, and use the 12% tint for badges.",
+      "Do put identifiers, slugs and times in Geist Mono; keep sentence case everywhere.",
+      "Do route destructive actions through ConfirmDialog and say what will be lost.",
+      "Do teach in empty states with an icon tile, a plain explanation and a next action.",
+      "Do keep motion to 150-200ms state confirmations and honor prefers-reduced-motion."
+    ],
+    "donts": [
+      "Don't nest a bordered card inside a panel; use a divider or a surface-2 tile.",
+      "Don't use violet decoratively: no gradients, glows or tinted section backgrounds.",
+      "Don't add illustration to empty or error states; the icon tile is the pattern.",
+      "Don't introduce a light theme, a display face, or type larger than 20px.",
+      "Don't extend the facet to other elements; it marks the active page only.",
+      "Don't use the Discord palette outside the preview component.",
+      "Don't use native confirm() or alert() dialogs."
+    ]
+  }
+}

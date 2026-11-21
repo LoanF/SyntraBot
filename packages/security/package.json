@@ -1,0 +1,17 @@
+{
+  "name": "@syntra/security",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@syntra/shared": "workspace:*",
+    "ipaddr.js": "^2.2.0",
+    "undici": "^6.21.0"
+  }
+}

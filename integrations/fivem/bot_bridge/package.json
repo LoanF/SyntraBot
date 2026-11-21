@@ -1,0 +1,7 @@
+{
+  "name": "@syntra/bot-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": { "test": "vitest run" },
+  "devDependencies": { "@syntra/security": "workspace:*" }
+}

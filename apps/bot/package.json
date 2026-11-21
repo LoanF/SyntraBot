@@ -1,0 +1,24 @@
+{
+  "name": "@syntra/bot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=../../.env src/main.ts",
+    "start": "tsx --env-file-if-exists=../../.env src/main.ts",
+    "register": "tsx --env-file-if-exists=../../.env src/register-commands.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@syntra/core": "workspace:*",
+    "@syntra/db": "workspace:*",
+    "@syntra/security": "workspace:*",
+    "@syntra/shared": "workspace:*",
+    "bullmq": "^5.34.0",
+    "discord.js": "^14.16.3",
+    "ioredis": "^5.4.1",
+    "pino": "^9.5.0",
+    "zod": "^3.23.8"
+  }
+}

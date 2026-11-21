@@ -1,0 +1,768 @@
+// =============================================================================
+// Syntra — schéma multi-tenant 100 % data-driven
+// Règles :
+//  - TOUTE table métier porte `projectId` (isolation tenant, + RLS Postgres en défense en profondeur)
+//  - Les secrets (`*Enc`) sont stockés au format AES-256-GCM "v1:keyId:iv:tag:ct" (voir SECURITY.md)
+//  - Les snowflakes Discord sont des String (jamais Int/BigInt côté JSON)
+//  - Aucune valeur métier en dur : tout vient de ConfigTemplate cloné à la création du projet
+// =============================================================================
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["relationJoins"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------------------------------------------------------
+// Enums
+// ----------------------------------------------------------------------------
+
+enum ProjectPlan {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+enum ProjectStatus {
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum ProjectRole {
+  OWNER
+  ADMIN
+}
+
+enum TicketStatusTrigger {
+  ON_CREATE
+  ON_USER_REPLY
+  ON_STAFF_REPLY
+  MANUAL_ONLY
+}
+
+enum TicketSource {
+  DISCORD_DM
+  INGAME_REPORT
+  API
+  STAFF_CREATED
+}
+
+enum TicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum TicketMessageKind {
+  PLAYER
+  STAFF_PUBLIC
+  STAFF_ANONYMOUS
+  INTERNAL_NOTE
+  SYSTEM
+}
+
+enum ActorType {
+  USER
+  API_KEY
+  BOT
+  SYSTEM
+}
+
+enum DouaneDecision {
+  PENDING
+  ACCEPTED
+  REFUSED
+  ABANDONED
+}
+
+enum EmbedStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum RoleSyncSource {
+  JOB
+  JOB_GRADE
+  GROUP
+  CUSTOM_QUERY_KEY
+}
+
+enum ReportStatus {
+  OPEN
+  CLAIMED
+  CLOSED
+}
+
+enum ReportMessageKind {
+  PLAYER
+  STAFF
+  SYSTEM
+}
+
+enum ReportMessageSource {
+  GAME
+  DISCORD
+}
+
+enum WebhookStatus {
+  RECEIVED
+  PROCESSED
+  FAILED
+}
+
+enum FivemFramework {
+  ESX
+  QBCORE
+  QBOX
+  CUSTOM
+}
+
+// ----------------------------------------------------------------------------
+// Identité & tenant
+// ----------------------------------------------------------------------------
+
+model User {
+  id          String    @id @default(cuid())
+  discordId   String    @unique
+  username    String
+  avatar      String?
+  createdAt   DateTime  @default(now())
+  lastLoginAt DateTime?
+
+  memberships ProjectMember[]
+  ownedProjects Project[]     @relation("ProjectOwner")
+}
+
+model Project {
+  id              String        @id @default(cuid())
+  slug            String        @unique
+  name            String
+  ownerId         String
+  plan            ProjectPlan   @default(FREE)
+  status          ProjectStatus @default(ACTIVE)
+  locale          String        @default("fr")
+  timezone        String        @default("Europe/Paris")
+  /// Template cloné à la création (traçabilité, permet "réinitialiser aux valeurs par défaut")
+  templateKey     String        @default("default")
+  templateVersion Int           @default(1)
+  /// Incrémenté à chaque modif de config -> invalidation de cache temps réel (bot + api)
+  configRevision  Int           @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  owner User @relation("ProjectOwner", fields: [ownerId], references: [id])
+
+  members         ProjectMember[]
+  guilds          Guild[]
+  modules         ModuleInstance[]
+  accessPolicies  AccessPolicy[]
+  apiKeys         ApiKey[]
+  fivemDatabase   FivemDatabase?
+  rconConnection  RconConnection?
+  bridgeLink      BridgeLink?
+  poles           TicketPole[]
+  ticketStatuses  TicketStatus[]
+  snippets        TicketSnippet[]
+  tickets         Ticket[]
+  reports         Report[]
+  ticketCounter   TicketCounter?
+  playerLinks     PlayerLink[]
+  douaneSessions  DouaneSession[]
+  webhookDeliveries WebhookDelivery[]
+  embeds          EmbedTemplate[]
+  roleSyncRules   RoleSyncRule[]
+  messageTemplates MessageTemplate[]
+  moduleRecords   ModuleRecord[]
+  auditLogs       AuditLog[]
+
+  @@index([ownerId])
+}
+
+/// Droits "niveau projet" (créateur / co-admins SaaS). Les droits fins passent par AccessPolicy (rôles Discord).
+model ProjectMember {
+  projectId String
+  userId    String
+  role      ProjectRole
+  createdAt DateTime    @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, userId])
+}
+
+/// Templates de configuration par défaut (versionnés). `data` est validé par Zod (packages/shared).
+model ConfigTemplate {
+  id        String   @id @default(cuid())
+  key       String
+  version   Int
+  name      String
+  isDefault Boolean  @default(false)
+  /// { modules: {...}, poles: [...], statuses: [...], messages: {...}, snippets: [...] }
+  data      Json
+  createdAt DateTime @default(now())
+
+  @@unique([key, version])
+}
+
+/// Un serveur Discord rattaché à un projet (Principal, Staff, Légal, Illégal, Event, Dev…)
+model Guild {
+  id             String    @id @default(cuid())
+  projectId      String
+  discordGuildId String    @unique
+  label          String
+  /// Clé libre définie par le client (ex: "main", "staff", "legal") — jamais interprétée en dur
+  kind           String
+  isPrimary      Boolean   @default(false)
+  botPresent     Boolean   @default(false)
+  /// Dernier rapport de santé des permissions du bot : { missing: ["MANAGE_CHANNELS", ...] }
+  healthReport   Json?
+  healthCheckedAt DateTime?
+  createdAt      DateTime  @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  modules        ModuleInstance[]
+  poles          TicketPole[]
+  tickets        Ticket[]
+  embeds         EmbedTemplate[]
+  roleSyncRules  RoleSyncRule[]
+
+  @@index([projectId])
+}
+
+// ----------------------------------------------------------------------------
+// Modules (plugin system) & RBAC
+// ----------------------------------------------------------------------------
+
+/// Activation + configuration d'un module. guildId NULL = module de portée projet (rcon, status global…)
+model ModuleInstance {
+  id            String   @id @default(cuid())
+  projectId     String
+  guildId       String?
+  /// guildId ?? "project" — contourne le problème d'unicité des NULL en SQL
+  scopeKey      String
+  moduleKey     String   // tickets | douane | embeds | rcon | reports | status | sync_roles | (futur) factions
+  enabled       Boolean  @default(false)
+  /// Validé par le configSchema Zod déclaré dans le manifest du module
+  config        Json     @default("{}")
+  configVersion Int      @default(1)
+  updatedAt     DateTime @updatedAt
+  createdAt     DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  guild   Guild?  @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, moduleKey, scopeKey])
+  @@index([projectId, moduleKey])
+}
+
+/// RBAC : "les membres ayant ce rôle Discord (sur ce serveur) obtiennent ces permissions sur cette cible"
+/// Ex: rôle "Resp. Illégal" (guild Staff) -> ["tickets:read","tickets:write","transcripts:read"] ciblant guild Illégal
+model AccessPolicy {
+  id             String   @id @default(cuid())
+  projectId      String
+  /// Serveur Discord où vit le rôle
+  roleGuildId    String
+  discordRoleId  String
+  /// Cible : serveur précis, ou NULL = projet entier
+  targetGuildId  String?
+  targetScopeKey String   // targetGuildId ?? "project"
+  /// Permissions "domaine:action" (catalogue défini dans packages/security/permissions.ts)
+  permissions    String[]
+  label          String?
+  createdAt      DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([roleGuildId, discordRoleId, targetScopeKey])
+  @@index([projectId])
+}
+
+// ----------------------------------------------------------------------------
+// Intégrations & secrets (chiffrés AES-256-GCM)
+// ----------------------------------------------------------------------------
+
+model ApiKey {
+  id          String    @id @default(cuid())
+  projectId   String
+  /// Identifiant public (préfixe "sk_live_xxx"), envoyé dans X-Syntra-Key-Id
+  keyId       String    @unique
+  name        String
+  /// Secret HMAC chiffré (on doit pouvoir le relire pour recalculer la signature — pas un hash)
+  secretEnc   String
+  /// ex: ["webhooks:whitelist","members:check","bridge:report","bridge:poll"]
+  scopes      String[]
+  rateLimitPerMin Int     @default(120)
+  ipAllowlist String[]
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  revokedAt   DateTime?
+  /// Rotation : l'ancienne clé reste valide jusqu'à graceUntil
+  graceUntil  DateTime?
+  createdById String?
+  createdAt   DateTime  @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+/// BDD FiveM externe du client (lecture seule). Accès via requêtes paramétrées + mapping validé.
+model FivemDatabase {
+  id                  String         @id @default(cuid())
+  projectId           String         @unique
+  framework           FivemFramework @default(ESX)
+  connectionEnc       String         // chaîne de connexion chiffrée
+  /// Mapping tables/colonnes -> champs de fiche (identifiants regex-validés [A-Za-z0-9_]+, jamais de SQL libre)
+  mapping             Json
+  /// Interdit par défaut : refuse les hôtes en réseau privé/loopback (anti-SSRF)
+  allowPrivateNetwork Boolean        @default(false)
+  lastCheckAt         DateTime?
+  lastCheckOk         Boolean?
+  updatedAt           DateTime       @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model RconConnection {
+  id          String   @id @default(cuid())
+  projectId   String   @unique
+  host        String
+  port        Int
+  passwordEnc String
+  /// Allowlist de commandes autorisées (ex: ["ban","kick","revive","announce"]) — templates de commande dans config du module
+  allowedCommands String[]
+  updatedAt   DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+/// Liaison avec la ressource FiveM bot_bridge (le bridge appelle l'API en sortant : pas de port à ouvrir)
+model BridgeLink {
+  id          String    @id @default(cuid())
+  projectId   String    @unique
+  apiKeyId    String?
+  lastSeenAt  DateTime?
+  bridgeVersion String?
+  /// File de commandes sortantes (teleport…) consommées par le bridge via long-polling signé
+  pendingCommands Json  @default("[]")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model PlayerLink {
+  id         String   @id @default(cuid())
+  projectId  String
+  discordId  String
+  /// license:xxx / steam:xxx / citizenid …
+  identifier String
+  createdAt  DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, identifier])
+  @@index([projectId, discordId])
+}
+
+// ----------------------------------------------------------------------------
+// Tickets
+// ----------------------------------------------------------------------------
+
+/// Pôle = destination configurable d'un ticket (Staff, Légal, Illégal, Dev, Event…)
+model TicketPole {
+  id               String         @id @default(cuid())
+  projectId        String
+  /// Serveur Discord où le salon est créé
+  guildId          String
+  key              String
+  label            String
+  emoji            String?
+  description      String?
+  categoryChannelId String?
+  staffRoleIds     String[]
+  /// Nom affiché pour les réponses anonymes ("Équipe Légal")
+  anonymousName    String?
+  /// Surcharge du pattern de salon ; défaut dans ModuleInstance(tickets).config
+  channelPattern   String?
+  defaultPriority  TicketPriority @default(NORMAL)
+  position         Int            @default(0)
+  enabled          Boolean        @default(true)
+
+  project   Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  guild     Guild            @relation(fields: [guildId], references: [id])
+  questions TicketQuestion[]
+  tickets   Ticket[]
+  snippets  TicketSnippet[]
+
+  @@unique([projectId, key])
+}
+
+model TicketQuestion {
+  id          String  @id @default(cuid())
+  poleId      String
+  key         String
+  label       String
+  placeholder String?
+  /// SHORT | PARAGRAPH (limites Discord : 5 questions max par modal — validé côté Zod)
+  style       String  @default("SHORT")
+  required    Boolean @default(true)
+  minLength   Int?
+  maxLength   Int?
+  position    Int     @default(0)
+
+  pole TicketPole @relation(fields: [poleId], references: [id], onDelete: Cascade)
+
+  @@unique([poleId, key])
+}
+
+/// Pastilles : 100 % configurables par projet
+model TicketStatus {
+  id              String              @id @default(cuid())
+  projectId       String
+  key             String
+  label           String
+  emoji           String
+  color           String              // #RRGGBB
+  trigger         TicketStatusTrigger
+  lockAutoChange  Boolean             @default(false)
+  isTerminal      Boolean             @default(false)
+  position        Int                 @default(0)
+
+  project Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tickets Ticket[]
+  changesFrom TicketStatusChange[] @relation("ChangeFrom")
+  changesTo   TicketStatusChange[] @relation("ChangeTo")
+
+  @@unique([projectId, key])
+}
+
+model TicketSnippet {
+  id        String   @id @default(cuid())
+  projectId String
+  poleId    String?  // NULL = disponible pour tous les pôles
+  key       String
+  title     String
+  content   String
+  createdAt DateTime @default(now())
+
+  project Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  pole    TicketPole? @relation(fields: [poleId], references: [id], onDelete: SetNull)
+
+  @@unique([projectId, key])
+}
+
+/// Compteur atomique par projet (numéro de ticket lisible)
+model TicketCounter {
+  projectId String @id
+  last      Int    @default(0)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Ticket {
+  id              String         @id @default(cuid())
+  projectId       String
+  guildId         String
+  poleId          String
+  number          Int
+  /// Salon Discord (NULL après suppression du salon à la clôture)
+  channelId       String?
+  userDiscordId   String
+  username        String
+  statusId        String
+  priority        TicketPriority @default(NORMAL)
+  source          TicketSource   @default(DISCORD_DM)
+  claimedByDiscordId String?
+  claimedByName   String?
+  claimedAt       DateTime?
+  subject         String?
+  /// Réponses au formulaire modal : { questionKey: answer }
+  answers         Json           @default("{}")
+  /// Contexte /report : coords, hp, armor, arme, véhicule, joueurs proches (50 m)
+  gameContext     Json?
+  /// Fiche joueur au moment de l'ouverture (snapshot immuable)
+  playerSnapshot  Json?
+  pinnedMessageId String?
+  /// Verrou/debounce du renommage de salon (anti rate-limit)
+  lastRenameAt    DateTime?
+  pendingChannelName String?
+  closedAt        DateTime?
+  closedByDiscordId String?
+  closeReason     String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  project  Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  guild    Guild        @relation(fields: [guildId], references: [id])
+  pole     TicketPole   @relation(fields: [poleId], references: [id])
+  status   TicketStatus @relation(fields: [statusId], references: [id])
+
+  messages  TicketMessage[]
+  transfers TicketTransfer[]
+  statusChanges TicketStatusChange[]
+
+  @@unique([projectId, number])
+  @@unique([guildId, channelId])
+  @@index([projectId, userDiscordId])
+  @@index([projectId, statusId])
+}
+
+model TicketMessage {
+  id               String            @id @default(cuid())
+  ticketId         String
+  projectId        String
+  kind             TicketMessageKind
+  authorDiscordId  String?
+  authorName       String?
+  authorAvatar     String?
+  content          String
+  embeds           Json?
+  discordMessageId String?
+  /// Garde l'ancien salon après un transfert
+  channelId        String?
+  editedAt         DateTime?
+  deletedAt        DateTime?
+  createdAt        DateTime          @default(now())
+
+  ticket      Ticket             @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId, createdAt])
+  @@index([projectId])
+}
+
+model TicketTransfer {
+  id             String   @id @default(cuid())
+  ticketId       String
+  fromPoleId     String
+  toPoleId       String
+  fromGuildId    String
+  toGuildId      String
+  byDiscordId    String
+  note           String?
+  createdAt      DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+}
+
+model TicketStatusChange {
+  id           String   @id @default(cuid())
+  ticketId     String
+  fromStatusId String?
+  toStatusId   String
+  actorType    ActorType
+  actorId      String?
+  cause        String   // trigger | manual | api
+  createdAt    DateTime @default(now())
+
+  ticket Ticket        @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  from   TicketStatus? @relation("ChangeFrom", fields: [fromStatusId], references: [id])
+  to     TicketStatus  @relation("ChangeTo", fields: [toStatusId], references: [id])
+
+  @@index([ticketId])
+}
+
+// ----------------------------------------------------------------------------
+// Douane, webhooks, embeds, sync rôles, textes
+// ----------------------------------------------------------------------------
+
+model DouaneSession {
+  id               String         @id @default(cuid())
+  projectId        String
+  candidateDiscordId String
+  voiceChannelId   String
+  joinedAt         DateTime       @default(now())
+  leftAt           DateTime?
+  handledByDiscordId String?
+  decision         DouaneDecision @default(PENDING)
+  decidedAt        DateTime?
+  note             String?
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, candidateDiscordId])
+}
+
+/// Journal + idempotence des webhooks entrants (site vitrine, bridge)
+model WebhookDelivery {
+  id             String        @id @default(cuid())
+  projectId      String
+  apiKeyId       String?
+  endpoint       String
+  idempotencyKey String
+  payloadHash    String
+  status         WebhookStatus @default(RECEIVED)
+  error          String?
+  createdAt      DateTime      @default(now())
+  processedAt    DateTime?
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, endpoint, idempotencyKey])
+}
+
+model EmbedTemplate {
+  id         String      @id @default(cuid())
+  projectId  String
+  guildId    String
+  name       String
+  channelId  String?
+  /// { content?, embeds:[...], components:[ {type:"link"|"auto_role"|"open_ticket", ...} ] } — validé Zod + URLs filtrées SSRF
+  payload    Json
+  status     EmbedStatus @default(DRAFT)
+  /// Message publié (permet message.edit() en direct)
+  messageId  String?
+  publishedAt DateTime?
+  createdById String?
+  updatedAt  DateTime    @updatedAt
+  createdAt  DateTime    @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  guild   Guild   @relation(fields: [guildId], references: [id])
+
+  @@index([projectId, guildId])
+}
+
+model RoleSyncRule {
+  id            String         @id @default(cuid())
+  projectId     String
+  guildId       String
+  source        RoleSyncSource
+  /// ex: "police" ou "police:3"
+  matchValue    String
+  discordRoleId String
+  /// true = retire le rôle quand la condition disparaît
+  removeWhenUnmatched Boolean @default(true)
+  enabled       Boolean        @default(true)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  guild   Guild   @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, guildId])
+}
+
+/// Tous les textes visibles (MP, messages d'embed, refus WL…) — jamais de chaîne en dur dans le code
+model MessageTemplate {
+  id        String   @id @default(cuid())
+  projectId String
+  key       String   // ex: "ticket.dm.closed", "whitelist.accepted"
+  locale    String   @default("fr")
+  /// Variables {user}, {pole}, {ticket.number}… validées contre la liste déclarée par le module
+  content   String
+  embed     Json?
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, key, locale])
+}
+
+/// Extension future (v2 Factions : LSPD, enquêtes…) : un module peut stocker des enregistrements génériques
+/// avant d'avoir ses propres tables dédiées (qui devront toutes porter projectId).
+model ModuleRecord {
+  id         String   @id @default(cuid())
+  projectId  String
+  moduleKey  String
+  collection String
+  guildId    String?
+  data       Json
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, moduleKey, collection])
+}
+
+// ----------------------------------------------------------------------------
+// Audit (append-only : aucun UPDATE/DELETE applicatif, REVOKE au niveau rôle DB)
+// ----------------------------------------------------------------------------
+
+model AuditLog {
+  id         String    @id @default(cuid())
+  projectId  String
+  guildId    String?
+  actorType  ActorType
+  actorId    String?
+  actorName  String?
+  action     String    // ex: "module.update", "rcon.execute", "apikey.rotate"
+  entityType String?
+  entityId   String?
+  /// Secrets masqués avant écriture
+  before     Json?
+  after      Json?
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt])
+  @@index([projectId, action])
+}
+
+// ----------------------------------------------------------------------------
+// Reports in-game (≠ tickets) : créés UNIQUEMENT en jeu, traités depuis Discord (fil staff).
+// La source de vérité de l'état reste le jeu (syntra_reports) ; Discord en est le miroir + télécommande.
+// ----------------------------------------------------------------------------
+
+model Report {
+  id               String       @id @default(cuid())
+  projectId        String
+  /// Serveur Discord du salon staff
+  guildId          String?
+  /// ID du report côté jeu
+  externalId       String
+  status           ReportStatus @default(OPEN)
+  reason           String
+  reporterName     String
+  reporterIdentifier String
+  reporterDiscordId String?
+  reporterUid      Int?
+  serverId         Int?
+  gameContext      Json?
+  playerSnapshot   Json?
+  claimedByName    String?
+  claimedByDiscordId String?
+  resolution       String?
+  closedByName     String?
+  /// Salon staff, message principal (embed + boutons) et fil de discussion
+  channelId        String?
+  mainMessageId    String?
+  threadId         String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  closedAt         DateTime?
+
+  project  Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  messages ReportMessage[]
+
+  @@unique([projectId, externalId])
+  @@unique([threadId])
+  @@index([projectId, status])
+}
+
+model ReportMessage {
+  id               String              @id @default(cuid())
+  reportId         String
+  projectId        String
+  kind             ReportMessageKind
+  source           ReportMessageSource
+  authorName       String
+  authorDiscordId  String?
+  content          String
+  discordMessageId String?
+  createdAt        DateTime            @default(now())
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId, createdAt])
+  @@index([projectId])
+}

@@ -1,0 +1,34 @@
+/* Charte Syntra — violet clair #ad83ff / violet foncé #9057ff. Dark mode natif. */
+:root {
+  --brand-light: #ad83ff;
+  --brand-dark: #9057ff;
+
+  /* Surfaces : gris neutres très légèrement teintés violet */
+  --bg: #0b0a10;
+  --surface-1: #12111a;
+  --surface-2: #181723;
+  --surface-3: #201f2d;
+  --border: #2a2938;
+  --border-strong: #3a3950;
+  --surface-hover: #1c1b28;
+  --border-hover: #4a4962; /* bordure des champs au survol */
+  --brand-hover: #bd9bff; /* survol du bouton principal */
+  --switch-hover: #2b2a3d; /* piste d'interrupteur au survol */
+  --text-body: #dcdbe6; /* corps des messages de conversation */
+  --accent-soft: color-mix(in srgb, var(--brand-dark) 16%, transparent);
+  --accent-line: color-mix(in srgb, var(--brand-light) 38%, transparent);
+  --ink: #0b0a10; /* texte sur fond violet clair */
+
+  --text: #f2f1f8;
+  --text-muted: #a3a1b8;
+  --text-subtle: #8b89a3; /* AA (≥4.5:1) sur toutes les surfaces */
+
+  --success: #3ecf8e;
+  --warning: #f5b544;
+  --danger: #f2555a;
+  --info: #5aa9ff;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+}

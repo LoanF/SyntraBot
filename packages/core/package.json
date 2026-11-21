@@ -1,0 +1,27 @@
+{
+  "name": "@syntra/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@discordjs/rest": "^2.4.0",
+    "bullmq": "^5.34.0",
+    "@syntra/db": "workspace:*",
+    "@syntra/security": "workspace:*",
+    "@syntra/shared": "workspace:*",
+    "discord-api-types": "^0.37.119",
+    "ioredis": "^5.4.1",
+    "mysql2": "^3.11.5",
+    "zod": "^3.23.8"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./web": "./src/web.ts"
+  }
+}
