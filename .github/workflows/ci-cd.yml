@@ -27,7 +27,9 @@ env:
 jobs:
   verify:
     name: 🔍 Typecheck, tests, build
-    runs-on: ubuntu-latest   # hébergé par GitHub : bases de test jetables, rien n'est exécuté sur votre serveur
+    # Runner auto-hébergé (LXC Syntra) : aucune minute GitHub facturée. Les bases de test sont des
+    # conteneurs jetables (ports 5432/6379/3307, non utilisés par la pile de production).
+    runs-on: [self-hosted, syntra]
     timeout-minutes: 20
     services:
       postgres:

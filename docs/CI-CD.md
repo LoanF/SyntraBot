@@ -1,9 +1,9 @@
 # CI / CD et mise en place du serveur
 
-Même principe que LSPD-Tool : un **runner GitHub auto-hébergé** installé sur le serveur déploie à chaque push sur `main`. Les vérifications (typecheck, tests, build) tournent sur GitHub avec des bases jetables ; le déploiement passe par Docker Compose, avec sauvegarde de la base et retour arrière automatique.
+Même principe que LSPD-Tool : un **runner GitHub auto-hébergé** installé sur le serveur fait tout (vérifications puis déploiement), sans consommer de minutes GitHub. Les vérifications (typecheck, tests, build) utilisent des bases jetables en conteneurs ; le déploiement passe par Docker Compose, avec sauvegarde de la base et retour arrière automatique.
 
 ```
-pull request ─► verify (typecheck · tests · build)                  [GitHub : rien sur votre serveur]
+pull request ─► verify (typecheck · tests · build)                  [runner « syntra », bases jetables]
 push sur main ─► verify ─► deploy (runner « syntra » sur le LXC) :
                            sauvegarde base ► build des images (tag = SHA) ► migrations + démarrage
                            ► santé API / dashboard / bot ► OK : mémorise  |  KO : retour à la version précédente
@@ -17,15 +17,15 @@ Syntra manipule des secrets de tiers (token du bot, clés de chiffrement, mots d
 
 ## 1. Créer le LXC (Proxmox)
 
-Interface : *Create CT* › template Debian 12, **unprivileged**, 2 cœurs, 4096 Mo de RAM, 512 Mo de swap, 20 Go de disque, une IP fixe. Puis *Options › Features* : cocher **nesting** et **keyctl** (indispensables pour Docker). Cocher *Start at boot*.
+Interface : *Create CT* › template Debian 12, **unprivileged**, 4 cœurs, 6144 Mo de RAM, 512 Mo de swap, 25 Go de disque, une IP fixe. Puis *Options › Features* : cocher **nesting** et **keyctl** (indispensables pour Docker). Cocher *Start at boot*.
 
 Ou en ligne de commande, sur l'hôte Proxmox (adaptez l'ID, le stockage et le nom du template, listé par `pveam available | grep debian-12`) :
 
 ```bash
 pveam update
 pct create 210 local:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst \
-  --hostname syntra --cores 2 --memory 4096 --swap 512 \
-  --rootfs local-lvm:20 --net0 name=eth0,bridge=vmbr0,ip=dhcp \
+  --hostname syntra --cores 4 --memory 6144 --swap 512 \
+  --rootfs local-lvm:25 --net0 name=eth0,bridge=vmbr0,ip=dhcp \
   --unprivileged 1 --features nesting=1,keyctl=1 --onboot 1
 pct start 210
 pct enter 210
