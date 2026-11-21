@@ -40,7 +40,7 @@ curl -fsSL https://get.docker.com | sh
 adduser --disabled-password --gecos "" runner
 usermod -aG docker runner
 mkdir -p /opt/syntra/backups && chown -R runner:runner /opt/syntra
-ufw allow OpenSSH && ufw allow 80 && ufw allow 443 && ufw --force enable
+ufw allow OpenSSH && ufw allow from <IP_DE_HAPROXY> to any port 8080 proto tcp && ufw --force enable
 ```
 
 Vérification : `docker run --rm hello-world` doit afficher « Hello from Docker ».
@@ -48,8 +48,23 @@ Vérification : `docker run --rm hello-world` doit afficher « Hello from Docker
 ## 3. Réseau et DNS
 
 - Créez deux enregistrements DNS **A** vers l'IP publique : `console.votre-domaine.fr` (dashboard) et `api.votre-domaine.fr` (API signée, bridge FiveM, site vitrine).
-- Redirigez les ports **80 et 443** de votre box / routeur vers l'IP du LXC. Caddy (dans la pile) obtient et renouvelle seul les certificats Let's Encrypt.
-- Si un reverse proxy existe déjà devant (Nginx Proxy Manager, Traefik…), retirez le service `caddy` de `docker-compose.prod.yml` et faites pointer le proxy vers `web:3000` et `api:4000`.
+- Le TLS est géré par **HAProxy** (votre machine `proxy`). Le Caddy de la pile n'est qu'un relais HTTP interne : il écoute sur le port `HTTP_PORT` du LXC (8080 par défaut), sans certificat. Seul HAProxy doit pouvoir l'atteindre (règle `ufw` ci-dessus).
+- Certificat : sur le proxy, `certbot certonly --dns-cloudflare -d console.votre-domaine.fr -d api.votre-domaine.fr` (aucun port à ouvrir), puis concaténer `fullchain.pem` et `privkey.pem` dans le `.pem` lu par HAProxy (hook de renouvellement `--deploy-hook`).
+- Configuration HAProxy (frontend 443 existant, à adapter) :
+
+```
+frontend https
+    bind :443 ssl crt /etc/haproxy/certs/
+    http-request set-header X-Forwarded-Proto https
+    acl host_syntra_web hdr(host) -i console.votre-domaine.fr
+    acl host_syntra_api hdr(host) -i api.votre-domaine.fr
+    use_backend syntra if host_syntra_web || host_syntra_api
+
+backend syntra
+    option forwardfor
+    timeout server 45s          # le long-polling du bridge FiveM dure jusqu'à ~25 s
+    server lxc <IP_DU_LXC>:8080 check
+```
 
 ## 4. Fichier de secrets (sur le serveur uniquement)
 

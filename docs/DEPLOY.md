@@ -1,6 +1,6 @@
 # Déploiement (Docker Compose)
 
-Un seul serveur suffit : Postgres, Redis, le bot, l'API, le dashboard et Caddy (TLS automatique).
+Un seul serveur suffit : Postgres, Redis, le bot, l API, le dashboard et Caddy (relais HTTP interne ; le TLS est géré par le reverse proxy HAProxy, voir CI-CD.md).
 
 ## 1. Préparer
 1. Deux noms DNS pointant vers le serveur : `WEB_DOMAIN` (dashboard) et `API_DOMAIN` (API signée, bridge FiveM, site vitrine).

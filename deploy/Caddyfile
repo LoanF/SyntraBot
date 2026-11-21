@@ -1,10 +1,19 @@
-# TLS automatique (Let's Encrypt). Les DNS de WEB_DOMAIN et API_DOMAIN doivent pointer vers ce serveur.
-{$WEB_DOMAIN} {
+# Relais interne en HTTP : le TLS (certificats Let's Encrypt) est géré par le reverse proxy HAProxy placé devant.
+# Caddy ne publie qu'un port HTTP (HTTP_PORT, 8080 par défaut) et ne demande aucun certificat.
+{
+	auto_https off
+	servers {
+		# Fait confiance aux en-têtes X-Forwarded-* de HAProxy (réseau privé) : vraie IP client, https
+		trusted_proxies static private_ranges
+	}
+}
+
+http://{$WEB_DOMAIN} {
 	encode zstd gzip
 	reverse_proxy web:3000
 }
 
-{$API_DOMAIN} {
+http://{$API_DOMAIN} {
 	encode zstd gzip
 	# Corps limité : l'API valide déjà 256 Ko, on coupe plus tôt
 	request_body {
