@@ -3,6 +3,7 @@ name: 🚀 CI / Deploy Syntra
 # Pull request : vérifications uniquement. Push sur main : vérifications puis déploiement sur le serveur.
 on:
   pull_request:
+    branches: [main]
   push:
     branches: [main]
   workflow_dispatch:
