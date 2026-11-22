@@ -155,6 +155,6 @@ COMPOSE_PROJECT_NAME=syntra docker compose -f docker-compose.prod.yml --env-file
 ```
 
 - **Restaurer** : `gunzip -c backup.sql.gz | docker exec -i syntra-postgres-1 psql -U syntra syntra`.
-- **Logs** : `docker compose -p syntra -f docker-compose.prod.yml logs -f bot api web`.
+- **Commandes Docker** : `bash deploy/compose.sh ps`, `bash deploy/compose.sh logs -f bot api web`, `bash deploy/compose.sh up -d web` (après modification de `.env.prod`). Le script fournit le fichier de secrets et la version déployée.
 - **Déploiement manuel** : « Run workflow » dans l'onglet Actions, ou `bash deploy/deploy.sh` dans le dépôt du runner.
 - **Mises à jour du système** : `apt upgrade` dans le LXC, puis redémarrez la pile avec le workflow. Surveillez la mise à jour du runner (GitHub la fait seul, mais le service doit rester actif).
