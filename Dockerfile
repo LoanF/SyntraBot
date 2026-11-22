@@ -57,5 +57,7 @@ FROM web-build AS web
 ENV NODE_ENV=production
 EXPOSE 3000
 WORKDIR /app/apps/web
+# Next écrit son cache d'images optimisées dans .next/cache : le dossier doit appartenir à l'utilisateur non-root
+RUN mkdir -p .next/cache && chown -R node:node .next/cache
 USER node
 CMD ["node_modules/.bin/next", "start", "-p", "3000"]
