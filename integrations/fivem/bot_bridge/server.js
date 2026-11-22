@@ -1,5 +1,5 @@
 'use strict';
-/* global GetConvar, GetConvarInt, GetPlayers, GetPlayerName, GetPlayerPed, GetNumPlayerIdentifiers, GetPlayerIdentifier, GetEntityCoords, GetEntityHealth,
+/* global GetConvar, GetConvarInt, GetNumPlayerIndices, GetPlayerFromIndex, GetPlayerName, GetPlayerPed, GetNumPlayerIdentifiers, GetPlayerIdentifier, GetEntityCoords, GetEntityHealth,
    GetPedArmour, GetSelectedPedWeapon, GetVehiclePedIsIn, GetVehicleNumberPlateText, GetPlayerRoutingBucket, SetPlayerRoutingBucket,
    SetEntityCoords, on, exports, GetResourceState */
 const http = require('http');
@@ -57,6 +57,14 @@ function start() {
     return out;
   }
 
+  // `GetPlayers` est lui aussi un raccourci Lua : en JS on énumère avec GetNumPlayerIndices + GetPlayerFromIndex
+  function listPlayers() {
+    const out = [];
+    const n = GetNumPlayerIndices();
+    for (let i = 0; i < n; i++) out.push(String(GetPlayerFromIndex(i)));
+    return out;
+  }
+
   function identifiersOf(src) {
     const ids = listIdentifiers(src);
     const pick = (p) => ids.find((i) => i.startsWith(p));
@@ -80,7 +88,7 @@ function start() {
     const [x, y, z] = GetEntityCoords(ped);
     const vehicle = GetVehiclePedIsIn(ped, false);
     const ids = identifiersOf(src);
-    const others = GetPlayers()
+    const others = listPlayers()
       .filter((p) => Number(p) !== Number(src))
       .map((p) => {
         const [px, py, pz] = GetEntityCoords(GetPlayerPed(p));
@@ -172,7 +180,7 @@ function start() {
 
   // ---------------------------------------------------------------- téléportation staff (commandes reçues par long-polling)
   function findSourceByIdentifier(identifier) {
-    for (const p of GetPlayers()) if (listIdentifiers(p).includes(identifier)) return Number(p);
+    for (const p of listPlayers()) if (listIdentifiers(p).includes(identifier)) return Number(p);
     return null;
   }
 
