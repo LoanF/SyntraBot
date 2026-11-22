@@ -1,5 +1,5 @@
 'use strict';
-/* global GetConvar, GetConvarInt, GetPlayers, GetPlayerName, GetPlayerPed, GetPlayerIdentifiers, GetEntityCoords, GetEntityHealth,
+/* global GetConvar, GetConvarInt, GetPlayers, GetPlayerName, GetPlayerPed, GetNumPlayerIdentifiers, GetPlayerIdentifier, GetEntityCoords, GetEntityHealth,
    GetPedArmour, GetSelectedPedWeapon, GetVehiclePedIsIn, GetVehicleNumberPlateText, GetPlayerRoutingBucket, SetPlayerRoutingBucket,
    SetEntityCoords, on, exports, GetResourceState */
 const http = require('http');
@@ -46,8 +46,19 @@ function start() {
   }
 
   // ---------------------------------------------------------------- collecte du contexte joueur
+  // `GetPlayerIdentifiers` n'existe qu'en Lua : en JS il faut passer par GetNumPlayerIdentifiers + GetPlayerIdentifier
+  function listIdentifiers(src) {
+    const out = [];
+    const n = GetNumPlayerIdentifiers(String(src));
+    for (let i = 0; i < n; i++) {
+      const id = GetPlayerIdentifier(String(src), i);
+      if (id) out.push(id);
+    }
+    return out;
+  }
+
   function identifiersOf(src) {
-    const ids = GetPlayerIdentifiers(String(src));
+    const ids = listIdentifiers(src);
     const pick = (p) => ids.find((i) => i.startsWith(p));
     const license2 = pick('license2:');
     const license = pick('license:');
@@ -161,7 +172,7 @@ function start() {
 
   // ---------------------------------------------------------------- téléportation staff (commandes reçues par long-polling)
   function findSourceByIdentifier(identifier) {
-    for (const p of GetPlayers()) if (GetPlayerIdentifiers(p).includes(identifier)) return Number(p);
+    for (const p of GetPlayers()) if (listIdentifiers(p).includes(identifier)) return Number(p);
     return null;
   }
 
