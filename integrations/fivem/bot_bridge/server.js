@@ -164,8 +164,11 @@ function start() {
     // Anti-écho : le jeu va émettre syntra-admin:reportMessage pour ce texte
     if (cmd.action === 'message') suppress.mark(lib.eventKey(id, 'staff', cmd.text || ''));
     try {
-      const [ok, err] = exports['syntra-admin'].ReportFromDiscord(cmd.action, id, cmd.actor, { text: cmd.text, resolution: cmd.text });
-      if (ok === false) log('^3action de report refusée par syntra-admin^7', cmd.action, id, err);
+      // Un export Lua qui retourne plusieurs valeurs (`return false, 'raison'`) n'en livre qu'une à JS : pas de déstructuration
+      const res = exports['syntra-admin'].ReportFromDiscord(cmd.action, id, cmd.actor, { text: cmd.text, resolution: cmd.text });
+      const ok = Array.isArray(res) ? res[0] : res;
+      const err = Array.isArray(res) ? res[1] : undefined;
+      if (ok === false) log('^3action de report refusée par syntra-admin^7', cmd.action, id, err || '(raison non fournie)');
     } catch (e) {
       log('^1ReportFromDiscord indisponible (patch syntra-admin appliqué ?)^7', e.message);
     }
