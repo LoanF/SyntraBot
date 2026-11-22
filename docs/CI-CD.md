@@ -138,9 +138,8 @@ Poussez sur `main` (ou *Actions › Run workflow*). Le premier build prend 5 à 
 2. Enregistrez les commandes slash (une fois, puis à chaque changement de commande) :
 
 ```bash
-cd /home/runner/actions-runner/_work/Syntra/Syntra
-COMPOSE_PROJECT_NAME=syntra docker compose -f docker-compose.prod.yml --env-file /opt/syntra/.env.prod \
-  run --rm --no-deps bot /app/node_modules/.bin/tsx src/register-commands.ts
+cd /home/runner/actions-runner/_work/SyntraBot/SyntraBot
+bash deploy/compose.sh run --rm --no-deps bot /app/node_modules/.bin/tsx src/register-commands.ts
 ```
 
 3. Dashboard › Clés API : créez la clé du bridge (`bridge:report`, `bridge:poll`, `bridge:link`), puis suivez `integrations/fivem/bot_bridge/README.md` avec `syntra_bridge:url https://<API_DOMAIN>`.
